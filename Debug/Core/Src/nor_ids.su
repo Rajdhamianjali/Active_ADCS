@@ -1,0 +1,3 @@
+nor_ids.c:10:13:NOR_IDS_Interpret_Manufacturer	16	static
+nor_ids.c:14:13:NOR_IDS_Interpret_Model	24	static
+nor_ids.c:34:10:NOR_IDS_GetQtdBlocks	32	static

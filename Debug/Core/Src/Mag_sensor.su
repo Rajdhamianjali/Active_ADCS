@@ -1,0 +1,4 @@
+Mag_sensor.c:15:9:LSM9DS1_ReadReg	24	static
+Mag_sensor.c:31:6:LSM9DS1_WriteReg	16	static
+Mag_sensor.c:45:5:LSM9DS1_Init	24	static
+Mag_sensor.c:65:6:LSM9DS1_ReadData	64	static

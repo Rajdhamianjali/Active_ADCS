@@ -1,0 +1,16 @@
+MPU_sensor.c:13:9:whoAmI	16	static
+MPU_sensor.c:23:6:readRegisters	16	static
+MPU_sensor.c:28:6:MPU_SPI_Read	24	static
+MPU_sensor.c:36:6:MPU_CS	16	static
+MPU_sensor.c:40:5:MPU_begin	24	static
+MPU_sensor.c:75:6:writeRegister	16	static
+MPU_sensor.c:80:6:MPU_SPI_Write	16	static
+MPU_sensor.c:91:9:SPIx_WriteRead	32	static
+MPU_sensor.c:102:6:MPU6500_SetDLPFBandwidth	16	static
+MPU_sensor.c:111:6:MPU_writeAccFullScaleRange	24	static
+MPU_sensor.c:150:6:MPU_writeGyroFullScaleRange	24	static
+MPU_sensor.c:189:6:MPU_calibrateGyro	56	static
+MPU_sensor.c:229:6:MPU6500_GetData	32	static
+MPU_sensor.c:264:6:MPU_calcAttitude	16	static
+MPU_sensor.c:272:6:MPU_readProcessedData	48	static
+MPU_sensor.c:319:9:MPU6500_ReadReg	24	static
