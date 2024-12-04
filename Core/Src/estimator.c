@@ -165,6 +165,5 @@ void process_IMU_filt(imu_filter filt_imu) {
 	Attitude_genEstimate(&filt_imu, &attitude_sat);
 	Attitude_compleEstimate(&filt_imu, &combined_sat_att);
 	Attitude_ekfEstimate(&filt_imu, &combined_sat_att);
-
 }
 

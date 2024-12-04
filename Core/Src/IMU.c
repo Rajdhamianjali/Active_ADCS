@@ -63,14 +63,17 @@ void IMU_REG_Data() {
 void IMU_Sensor_Data(MPU6500_t *DEFAULT_MPU6500, lsm9ds1_t *DEFAULT_LSM9DS1) {
 
 	// combined of MPU, MAG and all non filtered sensor data
+	//acc
 	IMU_SEN_DATA[0] = DEFAULT_MPU6500->sensorData.ax;
 	IMU_SEN_DATA[1] = DEFAULT_MPU6500->sensorData.ay;
 	IMU_SEN_DATA[2] = DEFAULT_MPU6500->sensorData.az;
 
+	//angular velocity
 	IMU_SEN_DATA[3] = DEFAULT_MPU6500->sensorData.gx;
 	IMU_SEN_DATA[4] = DEFAULT_MPU6500->sensorData.gy;
 	IMU_SEN_DATA[5] = DEFAULT_MPU6500->sensorData.gz;
 
+	//magnetic field
 	IMU_SEN_DATA[6] = DEFAULT_LSM9DS1->m_sensor_data.mx;
 	IMU_SEN_DATA[7] = DEFAULT_LSM9DS1->m_sensor_data.my;
 	IMU_SEN_DATA[8] = DEFAULT_LSM9DS1->m_sensor_data.mz;
@@ -139,10 +142,10 @@ imu_filter IMU_RCFilter() {
 	myDebug(" ax = %.2f \tay = %.2f \taz = %.2f \r\n", filt_imu.ax_mps2,
 			filt_imu.ay_mps2, filt_imu.az_mps2);
 	myDebug("GYRO (rad/s) \r\n");
-	myDebug(" gx = %f \tgy = %f \tgz = %f \r\n", filt_imu.p_rps, filt_imu.q_rps,
+	myDebug(" gx = %.2f \tgy = %.2f \tgz = %.2f \r\n", filt_imu.p_rps, filt_imu.q_rps,
 			filt_imu.r_rps);
 	myDebug("MAG (uT) \r\n");
-	myDebug(" mx = %f \tmy = %f \tmz = %f \r\nTotal Magenotometer = %f uT\r\n",
+	myDebug(" mx = %.2f \tmy = %.2f \tmz = %.2f \r\nTotal Magenotometer = %.2f uT\r\n",
 			filt_imu.mx_ut, filt_imu.my_ut, filt_imu.mz_ut, filt_imu.total_mag);
 
 	return filt_imu;

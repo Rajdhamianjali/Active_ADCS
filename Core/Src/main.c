@@ -67,18 +67,36 @@ sat_attitude attitude_sat;
 
 sat_att_combined combined_sat_att;
 
+extern mag_moment mag_moment_bdot;
+
 uint8_t SAT_IMU_REG[17];
 float IMU_SEN_DATA[9];
 
 uint32_t mSEC = 0;
 uint32_t sec = 0;
 uint8_t min = 0;
-uint8_t adcs_tx[8] = "transmit";
-uint8_t adcs_rx[8];
 
 int count = 0;
 
-uint8_t rxToOBC[9];
+int mode = 0;
+
+int IS_TAKE_DATA = 1;
+
+float rxToOBC_temp[23]; //Data to be sent to OBC
+int16_t rxToOBC_1[23]; //Arranged data in int16 format
+uint8_t rxToOBC[46]; //Buffer to hold transmitted data
+#define DATA_POINTS 10
+uint8_t fullDataBuffer[DATA_POINTS][9];
+
+int16_t decode1[23];
+float decode2[23];
+
+#define DATA_COLLECTION_PERIOD 10  // Data collection period in seconds
+#define TOTAL_RUN_TIME 60         // Total run time in seconds
+
+int counter = 0,counter2=0;  // Counter for tracking the 10-second intervals
+int data_index = 0;
+int total_time = 0; // Counter for total run time
 
 /* USER CODE END PV */
 
@@ -94,6 +112,7 @@ static void MX_TIM1_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
+void arrangeData();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -107,29 +126,114 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			mSEC = 0;
 		}
 
-		if (count == 10) {
+		if (count == 60) {
 			MTQ_Disable();
 			count = 0;
 			myDebug("MTQ Disable\r\n");
 
 			HAL_TIM_Base_Stop_IT(&htim1);
 
-			rxToOBC[6] = imu_filter_data.p_rps;
-			rxToOBC[7] = imu_filter_data.q_rps;
-			rxToOBC[8] = imu_filter_data.r_rps;
+			rxToOBC_temp[9] = mag_moment_bdot.MomentX;
+			rxToOBC_temp[10] = mag_moment_bdot.MomentY;
+			rxToOBC_temp[11] = mag_moment_bdot.MomentZ;
+			rxToOBC_temp[12] = mag_moment_bdot.Dy_per;
+			rxToOBC_temp[13] = mag_moment_bdot.Dz_per;
 
-			myDebug("-----Data send to OBC -----\r\n");
-			if (HAL_UART_Transmit(&huart3, rxToOBC, sizeof(rxToOBC), 1000)
-					== HAL_OK) {
-				for (int i = 0; i < sizeof(rxToOBC); i++) {
-					myDebug("%02x", rxToOBC[i]);
+			imu_filter_data = IMU_Get_Data(&DEFAULT_MPU6500, &DEFAULT_LSM9DS1); //IMU filtered data
+			process_IMU_filt(imu_filter_data);
+
+			rxToOBC_temp[14] = imu_filter_data.p_rps;
+			rxToOBC_temp[15] = imu_filter_data.q_rps;
+			rxToOBC_temp[16] = imu_filter_data.r_rps;
+
+			rxToOBC_temp[17] = imu_filter_data.mx_ut;
+			rxToOBC_temp[18] = imu_filter_data.my_ut;
+			rxToOBC_temp[19] = imu_filter_data.mz_ut;
+
+			rxToOBC_temp[20] = combined_sat_att.roll;
+			rxToOBC_temp[21] = combined_sat_att.pitch;
+			rxToOBC_temp[22] = combined_sat_att.yaw;
+
+			arrangeData();
+			if (HAL_UART_Transmit(&huart3, rxToOBC, 45, 1000) == HAL_OK) {
+				myDebug("Transmitted to OBC\r\n");
+				for (int i = 0; i < 46; i++) {
+					myDebug("%02x ", rxToOBC[i]);
 				}
+				myDebug("\n");
 			}
+			memset(rxToOBC, '\0', sizeof(rxToOBC));
+			memset(rxToOBC_temp, '\0', sizeof(rxToOBC_temp));
+
+			HAL_Delay(1000);
+
 			mSEC = 0;
 			sec = 0;
+			IS_TAKE_DATA = 1;
 		}
 	}
 }
+
+void arrangeData() {
+
+	for (int i = 0; i < 23; i++) {
+		myDebug("%.2f ", rxToOBC_temp[i]);
+		rxToOBC_1[i] = (int16_t) round(rxToOBC_temp[i] * 100.0f);
+	}
+	myDebug("\n");
+
+	myDebug("arranged \n");
+	for (int i = 0; i < 23; i++) {
+		myDebug("%d ", rxToOBC_1[i]);
+
+	}
+	myDebug("\n");
+
+	for (int i = 0; i < 46; i++) {
+		rxToOBC[2 * i] = (rxToOBC_1[i] >> 8) & 0xff;
+		rxToOBC[2 * i + 1] = rxToOBC_1[i] & 0xff;
+	}
+
+//	rxToOBC[46] = 0xff;
+//	rxToOBC[47] = 0xd9;
+
+	/* if (HAL_UART_Transmit(&huart3, rxToOBC, 100, 1000) == HAL_OK) {
+	 myDebug("Transmitted to OBC\r\n");
+	 for (int i = 0; i < 100; i++) {
+	 myDebug("%02x ", rxToOBC[i]);
+	 }
+	 myDebug("\n");
+
+	 //decoding the data
+	 //		for (int i = 0; i < 23; i++) {
+	 //			decode1[i] = (int16_t) ((rxToOBC[2 * i] << 8)
+	 //					| (rxToOBC[2 * i + 1] & 0xff));
+	 //			decode2[i] = decode1[i] / 100.0f;
+	 //			myDebug("Decoded values:\n");
+	 //			for (int i = 0; i < 23; i++) {
+	 //				myDebug("%.2f ", rxToOBC_temp[i]);
+	 //			}
+	 //			myDebug("\n");
+	 //		}
+
+	 //		uint8_t foot[2] = { 0xff, 0xd9 };
+
+	 //		if (HAL_UART_Transmit(&huart3, foot, sizeof(foot), 1000) == HAL_OK) {
+	 //			myDebug("ffd9 TX 1\n");
+	 //			if (HAL_UART_Transmit(&huart3, foot, 2, 1000) == HAL_OK) {
+	 //				myDebug("ffd9 TX 2\n", sizeof(foot));
+	 //			}
+	 //		}
+	 }
+	 */
+	myDebug("\n");
+
+//	memset(rxToOBC, '\0', sizeof(rxToOBC));
+//	memset(rxToOBC_temp, '\0', sizeof(rxToOBC_temp));
+//
+//	HAL_Delay(1000);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -170,68 +274,89 @@ int main(void) {
 
 	myDebug("##### Welcome to Active ADCS Debug Zone #####\r\n");
 	myDebug("----- Waiting for Handshake command from OBC -----\r\n");
-
 //	OBC_HANDSHAKE_FLAG = 1;
-
 	while (OBC_HANDSHAKE_FLAG == 0) {
 		WAIT_FOR_HANDSHAKE();
 	}
-
-	OBC_HANDSHAKE_FLAG = 0;
 
 	myDebug("----- Waiting Enable command from OBC -----\r\n");
-
-	while (OBC_HANDSHAKE_FLAG == 0) {
-		WAIT_FOR_HANDSHAKE();
+//	mode = 2;
+	while (mode == 0) {
+		GET_COMMAND_OBC();
 	}
-
-//    uint8_t ADCS = {'0x01','0x02','0x02','0x03','0x04'};
-//    write_to_file("/ADCS.txt", ADCS);
-
-//	IMU_Setup(&DEFAULT_MPU6500); //initialization and calibration
-
-//	TIM3->CCR1 = 28800;
-//	TIM4->CCR4 = 28800;
-//	TIM3->CCR2 = 0;
-//	TIM4->CCR3 = 0;
-//	MTQ_Disable();
-//	MTQ_Enable();
-//
-//	for (int i =0; i<=1000; i++){
-//		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-//		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-//		HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
-//		HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
-//
-//	}
-
-//	CalTorque(imu_filter_data, &DEFAULT_LSM9DS1, combined_sat_att);
 
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1) {
+		if (total_time < TOTAL_RUN_TIME) {
 
-//		HAL_UART_Transmit(&huart3, adcs_tx, sizeof(adcs_tx), 1000);
-//		HAL_UART_Receive(&huart3, adcs_rx, sizeof(adcs_rx), 1000);
+			if (IS_TAKE_DATA == 1) {
 
-		if (OBC_HANDSHAKE_FLAG == 1) {
-			IMU_Setup(&DEFAULT_MPU6500); //initialization and calibration
-			HAL_Delay(1000);
+				if (mode == 0) {
+					GET_COMMAND_OBC();
+				}
 
-			imu_filter_data = IMU_Get_Data(&DEFAULT_MPU6500, &DEFAULT_LSM9DS1); //IMU filtered data
-			HAL_Delay(1000);
+				if (mode == 1 || mode == 2) {
 
-			process_IMU_filt(imu_filter_data);
-			rxToOBC[0] = combined_sat_att.roll;
-			rxToOBC[1] = combined_sat_att.pitch;
-			rxToOBC[2] = combined_sat_att.yaw;
-			rxToOBC[3] = imu_filter_data.p_rps;
-			rxToOBC[4] = imu_filter_data.q_rps;
-			rxToOBC[5] = imu_filter_data.r_rps;
-			CalTorque(imu_filter_data, &DEFAULT_LSM9DS1, combined_sat_att);
+					IMU_Setup(&DEFAULT_MPU6500); //initialization and calibration
+					HAL_Delay(1000);
+					imu_filter_data = IMU_Get_Data(&DEFAULT_MPU6500,
+							&DEFAULT_LSM9DS1); //IMU filtered data
+					HAL_Delay(1000);
+					process_IMU_filt(imu_filter_data);
 
+					memset(rxToOBC_temp, '\0', sizeof(rxToOBC_temp));
+
+					rxToOBC_temp[0] = imu_filter_data.p_rps;
+					rxToOBC_temp[1] = imu_filter_data.q_rps;
+					rxToOBC_temp[2] = imu_filter_data.r_rps;
+
+					rxToOBC_temp[3] = imu_filter_data.mx_ut;
+					rxToOBC_temp[4] = imu_filter_data.my_ut;
+					rxToOBC_temp[5] = imu_filter_data.mz_ut;
+
+					rxToOBC_temp[6] = combined_sat_att.roll;
+					rxToOBC_temp[7] = combined_sat_att.pitch;
+					rxToOBC_temp[8] = combined_sat_att.yaw;
+
+					memcpy(fullDataBuffer[data_index], rxToOBC_temp,
+							sizeof(rxToOBC_temp));
+
+					counter++;
+					data_index++;
+					if (counter >= DATA_COLLECTION_PERIOD) {
+
+
+						if (mode == 1) {
+
+							arrangeData();
+							if (HAL_UART_Transmit(&huart3, rxToOBC,
+									sizeof(rxToOBC), 1000) == HAL_OK) {
+								myDebug("Transmitted to OBC\r\n");
+								for (int i = 0; i < sizeof(rxToOBC); i++) {
+									myDebug("%02x ", rxToOBC[i]);
+								}
+								myDebug("\n");
+							}
+						}
+						memset(rxToOBC,'\0', sizeof(rxToOBC));
+
+						counter = 0;  // Reset counter after 10 seconds
+						data_index = 0;
+
+					}
+					if (mode == 2) {
+
+						IS_TAKE_DATA = 0;
+
+						CalTorque(imu_filter_data, &DEFAULT_LSM9DS1,
+								combined_sat_att);
+					}
+					HAL_Delay(1000);
+				}
+			}
 		}
 	}
 

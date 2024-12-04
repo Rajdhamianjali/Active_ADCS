@@ -15,4 +15,6 @@ extern UART_HandleTypeDef huart3;
 
 void WAIT_FOR_HANDSHAKE();
 
+int GET_COMMAND_OBC();
+
 #endif /* INC_OBC_HANDSHAKE_H_ */

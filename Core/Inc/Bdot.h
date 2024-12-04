@@ -16,8 +16,8 @@ extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
 
-
 extern int count;
+
 
 //Define Constants
 #define desired_roll  0.5f
@@ -39,6 +39,18 @@ extern int count;
 float attitude_error[3];
 float angular_error[3];
 float Dx, Dy, Dz;
+
+typedef struct mag_moment_data {
+	float MomentX;
+	float MomentY;
+	float MomentZ;
+	float Dy;
+	float Dz;
+	float Dy_per;
+	float Dz_per;
+} mag_moment;
+
+mag_moment mag_moment_bdot;
 
 void CalAttitudeError(sat_att_combined *pcombined_sat_att);
 void CalTorque(imu_filter imu_filter_data, lsm9ds1_t *pBdata, sat_att_combined pcombined_sat_att);

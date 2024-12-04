@@ -96,24 +96,25 @@ void CalTorque(imu_filter pfilt_att, lsm9ds1_t *pBdata,
 		myDebug(" Bz = %.2f\r\n", Bz);
 
 		//calculate rate of change of magnetic field (dB/dt)
-
+		float dBx_dt = Wy * Bz - Wz * By;
 		float dBy_dt = Wz * Bx - Wx * Bz;
 		float dBz_dt = Wx * By - Wy * Bx;
 
 		myDebug("Desired Magnetic Moment\n");
 		//calculate the desired magnetic moment
-//		float MomentX = -Kp * dBx_dt;
 
-		float MomentY = -Kp * dBy_dt;
-		float MomentZ = -Kp * dBz_dt;
+		mag_moment_bdot.MomentX = -Kp * dBx_dt;
+		mag_moment_bdot.MomentY = -Kp * dBy_dt;
+		mag_moment_bdot.MomentZ = -Kp * dBz_dt;
 
-//		myDebug(" MomentX = %.2f\r\n", MomentX);
-		myDebug(" MomentY = %.2f\r\n", MomentY);
-		myDebug(" MomentZ = %.2f\r\n", MomentZ);
+		myDebug(" MomentX = %.2f\r\n", mag_moment_bdot.MomentX);
+		myDebug(" MomentY = %.2f\r\n", mag_moment_bdot.MomentY);
+		myDebug(" MomentZ = %.2f\r\n", mag_moment_bdot.MomentZ);
 		myDebug(" MAX_MOMENT_MTQ = %.2f\r\n", MAX_MOMENT_MTQ);
 		myDebug(" MAX_DUTY_CYCLE = %.2f\r\n", MAX_DUTY_CYCLE);
 
-		MomentY = 0.2;
+		mag_moment_bdot.MomentY = 0.2;
+		mag_moment_bdot.MomentZ = 0.2;
 
 		// Constrain magnetic moments within allowable limits
 //		MomentY = fminf(fmaxf(MomentY, -MAX_MOMENT_MTQ), MAX_MOMENT_MTQ);
@@ -121,12 +122,19 @@ void CalTorque(imu_filter pfilt_att, lsm9ds1_t *pBdata,
 
 //calculate PWM duty cycles based on maximum moment
 
-		Dy = (MomentY / MAX_MOMENT_MTQ) * MAX_DUTY_CYCLE;
-		Dz = (MomentZ / MAX_MOMENT_MTQ) * MAX_DUTY_CYCLE;
+		float maxDutyCycle = 28800.00;
+
+		mag_moment_bdot.Dy = (mag_moment_bdot.MomentY / MAX_MOMENT_MTQ)
+				* MAX_DUTY_CYCLE;
+		mag_moment_bdot.Dz = (mag_moment_bdot.MomentZ / MAX_MOMENT_MTQ)
+				* MAX_DUTY_CYCLE;
+
+		mag_moment_bdot.Dy_per = (mag_moment_bdot.Dy / maxDutyCycle);
+		mag_moment_bdot.Dz_per = (mag_moment_bdot.Dz / maxDutyCycle);
 
 		myDebug("Required Duty Cycle\n");
-		myDebug(" Dy = %.2f\r\n", Dy);
-		myDebug(" Dz = %.2f\r\n", Dz);
+		myDebug(" Dy = %.2f\r\n", mag_moment_bdot.Dy);
+		myDebug(" Dz = %.2f\r\n", mag_moment_bdot.Dz);
 		myDebug("----- MTQ enabled !!! -----\n");
 
 		// Constrain PWM duty cycle to allowable range
@@ -135,26 +143,23 @@ void CalTorque(imu_filter pfilt_att, lsm9ds1_t *pBdata,
 
 		// Apply PWM based on the sign of the moments
 
-//		if (MomentY >= 0.2 && MomentZ >= 0.2) {
-//			// Start the timer interrupt for controlling the PWM signal
-//			HAL_TIM_Base_Start_IT(&htim1);
-//
-//			// Set both MTQs (Y and Z) in the forward direction
-//			SET_PWM_FORWARD_Y((int) Dy);
-//			SET_PWM_FORWARD_Z((int) Dz);
-//		}
 		HAL_TIM_Base_Start_IT(&htim1);
-		if (MomentY < 0) {
-			SET_PWM_REVERSE_Y(fabs(Dy));
+
+//		if (mag_moment_bdot.MomentY > mag_moment_bdot.MomentZ) {
+		if (mag_moment_bdot.MomentY < 0) {
+			SET_PWM_REVERSE_Y(fabs(mag_moment_bdot.Dy));
 		} else {
-			SET_PWM_FORWARD_Y((int) Dy);
+			SET_PWM_FORWARD_Y((int) mag_moment_bdot.Dy);
 		}
-		if (MomentZ < 0) {
-			SET_PWM_REVERSE_Z(fabs(Dz));
-		} else {
-			SET_PWM_FORWARD_Z((int) Dz);
-		}
+		myDebug("----- Both ON !!! -----\n");
 	}
+	if (mag_moment_bdot.MomentZ < 0) {
+		SET_PWM_REVERSE_Z(fabs(mag_moment_bdot.Dz));
+	} else {
+		SET_PWM_FORWARD_Z((int) mag_moment_bdot.Dz);
+	}
+
+	return;
 }
 
 // Function to enable MTQ_OCP
@@ -168,7 +173,7 @@ void MTQ_Disable() {
 }
 
 // Function to set PWM duty cycle for Y-axis MTQ
-void SET_PWM_FORWARD_Y(uint32_t Dy) {
+void SET_PWM_FORWARD_Z(uint32_t Dy) {
 
 	TIM3->CCR1 = Dy;
 	TIM3->CCR2 = 0;
@@ -177,16 +182,15 @@ void SET_PWM_FORWARD_Y(uint32_t Dy) {
 
 }
 
-void SET_PWM_REVERSE_Y(uint32_t Dy) {
+void SET_PWM_REVERSE_Z(uint32_t Dy) {
 
 	TIM3->CCR1 = 0;
 	TIM3->CCR2 = Dy;
 	MTQ_Enable();
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-
 }
 
-void SET_PWM_FORWARD_Z(uint32_t Dz) {
+void SET_PWM_FORWARD_Y(uint32_t Dz) {
 
 	TIM4->CCR3 = 0;
 	TIM4->CCR4 = Dz;
@@ -195,7 +199,7 @@ void SET_PWM_FORWARD_Z(uint32_t Dz) {
 
 }
 
-void SET_PWM_REVERSE_Z(uint32_t Dz) {
+void SET_PWM_REVERSE_Y(uint32_t Dz) {
 
 	TIM4->CCR3 = Dz;
 	TIM4->CCR4 = 0;

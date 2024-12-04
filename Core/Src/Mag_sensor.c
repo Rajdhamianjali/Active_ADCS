@@ -88,8 +88,8 @@ void LSM9DS1_ReadData(lsm9ds1_t *pLSM9DS1) {
 					+ pLSM9DS1->m_sensor_data.mz * pLSM9DS1->m_sensor_data.mz);
 
 	//myDebug("-----Without filter, Sensor Data of Magnetometer-----\r\n");
-	myDebug("MAG (uT)\r\n");
-	myDebug(" mx = %f \tmy = %f \tmz = %f\r\nTotal Magenotometer = %f uT\r\n",
+//	myDebug("MAG (uT)\r\n");
+	myDebug("  mx = %.2f \t my = %.2f \t  mz = %.2f \t Total = %.2f uT\r\n",
 			pLSM9DS1->m_sensor_data.mx, pLSM9DS1->m_sensor_data.my,
 			pLSM9DS1->m_sensor_data.mz, pLSM9DS1->m_sensor_data.total_mag);
 }

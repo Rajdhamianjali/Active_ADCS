@@ -1,9 +1,9 @@
 Bdot.c:13:6:CalAttitudeError	48	static
 Bdot.c:30:6:att_control	16	static
 Bdot.c:59:6:CalTorque	88	static
-Bdot.c:161:6:MTQ_Enable	8	static
-Bdot.c:166:6:MTQ_Disable	8	static
-Bdot.c:171:6:SET_PWM_FORWARD_Y	16	static
-Bdot.c:180:6:SET_PWM_REVERSE_Y	16	static
-Bdot.c:189:6:SET_PWM_FORWARD_Z	16	static
-Bdot.c:198:6:SET_PWM_REVERSE_Z	16	static
+Bdot.c:166:6:MTQ_Enable	8	static
+Bdot.c:171:6:MTQ_Disable	8	static
+Bdot.c:176:6:SET_PWM_FORWARD_Z	16	static
+Bdot.c:185:6:SET_PWM_REVERSE_Z	16	static
+Bdot.c:193:6:SET_PWM_FORWARD_Y	16	static
+Bdot.c:202:6:SET_PWM_REVERSE_Y	16	static
